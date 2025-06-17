@@ -1,0 +1,101 @@
+---
+title: "hw8"
+author: "Xinrui Hu"
+date: "2023-04-11"
+output: pdf_document
+---
+
+```{r}
+library(MASS)
+pros = read.table("http://statweb.stanford.edu/~tibs/ElemStatLearn/datasets/prostate.data")
+```
+
+1.
+```{r}
+df <- pros
+df$lbph <- NULL
+```
+
+2.
+```{r}
+head(df)
+```
+
+3.
+```{r}
+summary(df)
+# No missing value
+```
+
+4.
+```{r}
+nrow(df)
+```
+
+5.
+Create a model with lpsa as the outcome variable and all the rest variables as predictors.Use backward elimination with a p-to-remove of 5% to remove variables.
+```{r}
+lmod <- lm(lpsa ~ ., df)
+summary(lmod)
+```
+```{r}
+lmod <- update(lmod, . ~ . - train)
+summary(lmod)
+```
+```{r}
+lmod <- update(lmod, . ~ . - gleason)
+summary(lmod)
+```
+```{r}
+lmod <- update(lmod, . ~ . - lcp)
+summary(lmod)
+```
+```{r}
+lmod <- update(lmod, . ~ . - pgg45)
+summary(lmod)
+```
+```{r}
+lmod <- update(lmod, . ~ . - age)
+summary(lmod)
+```
+
+6.
+Start again with all the predictors and use the AIC to select a model.
+Which model did you select (mention the predictors)?
+Show the summary of the selected model
+```{r}
+require(leaps)
+model <- regsubsets(lpsa ~ ., df)
+rs <- summary(model)
+rs$which
+rs$rss
+n <- nrow(df)
+p <- 2:10
+AIC <- n*log(rs$rss / n) + 2 * p
+AIC
+model1 <- lm(lpsa ~ lcavol+lweight+svi, df)
+summary(model1)
+# The third model has the lowest value
+```
+
+7.
+Start again with all the predictors and use the BIC to select a model:
+Which model did you select (mention the predictors)?
+ Show the summary of the selected model
+```{r}
+BIC <- n*log(rs$rss/n) + p*log(n)
+BIC
+# The third model has the lowest value
+```
+
+8.
+Start again with all the predictors and use the adjusted R2 to select a model.
+Which model did you select (mention the predictors)?
+Show the summary of the selected model
+```{r}
+rs$adjr2
+model2 <- lm(lpsa ~ .-train-gleason, df)
+summary(model2)
+# The sixth model has the highest value
+```
+

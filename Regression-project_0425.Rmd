@@ -1,0 +1,331 @@
+---
+title: "final"
+author: "Jinwoo Kim"
+date: "2023-04-25"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+rm (list = ls()) # Clearing the memory
+
+```
+
+```{r,message=FALSE}
+library(dplyr)
+library(tidyverse)
+library(knitr)
+library(car)
+options(scipen = 999)
+df <- read.csv('newdf.csv')
+df <- df %>% rename( "age" = "RIDAGEYR",
+                     "gender" = "RIAGENDR",
+                     "edu" = "DMDEDUC2",
+                     "marry" = "DMDMARTL", 
+                     "race" = "RIDRETH3", 
+                     "height" = "WHD010", 
+                     "weight" = "WHD020", 
+                     "hi" = "HIQ011", 
+                     "ogtt" = "LBXGLT") %>% na.omit(df$ogtt)
+```
+
+```{r}
+# Deal with the abnormal value
+df$height[df$height > 90] <- NA
+df$weight[df$weight > 700] <- NA
+df$hi[df$hi != 1] <- 2
+# put the missing value with the mean of the data
+df$weight[is.na(df$weight)] <- mean(df$weight, na.rm = TRUE)
+df$height[is.na(df$height)] <- mean(df$height, na.rm = TRUE)
+df$bmi <- signif((df$weight / (df$height^2))*703,4)
+gender <- factor(df$gender, labels = c("Male", "Female"))
+```
+
+```{r}
+summary(df)
+```
+
+
+```{r}
+# Set up the plotting window with two plots side-by-side
+par(mfrow = c(1, 2))
+plot(density(df$height), main = "Height Density", xlab = "height")
+plot(density(df$weight), main = "Weight Density", xlab = "Weight")
+```
+
+```{r}
+par(mfrow = c(1, 2))
+plot(density(df$bmi), main = "BMI Density", xlab = "BMI")
+plot(density(df$age), main = "Age Density", xlab = "Age")
+```
+```{r}
+par(mfrow = c(1, 2))
+hist(df$height, main = "Height Hist", xlab = "height")
+hist(df$weight, main = "Weight Hist", xlab = "Weight")
+```
+
+```{r}
+par(mfrow = c(1, 2))
+hist(df$bmi, main = "BMI Hist", xlab = "BMI")
+hist(df$age, main = "Age Hist", xlab = "Age")
+```
+
+
+
+
+
+
+```{r}
+par(mfrow = c(1, 2))
+hist(df$ogtt, main = "Oral Test Hist", xlab = "Test")
+plot(density(df$ogtt), main = "Oral Test Density", xlab = "Test")
+```
+
+```{r}
+library ("gridExtra")
+require(ggplot2)  
+p1 <- ggplot(df, aes(hi, ogtt)) + geom_point() + stat_smooth(method="lm")
+p2 <- ggplot(df, aes(age, ogtt)) + geom_point() + stat_smooth(method="lm")
+p3 <- ggplot(df, aes(gender, ogtt)) + geom_point() +stat_smooth(method="lm")
+p4 <- ggplot(df, aes(edu, ogtt)) + geom_point() + stat_smooth( method="lm")
+p5 <- ggplot(df, aes(marry, ogtt)) + geom_point() + stat_smooth(method="lm")
+p6 <- ggplot(df, aes(race, ogtt)) + geom_point() + stat_smooth(method="lm")
+p7 <- ggplot(df, aes(bmi, ogtt)) + geom_point(position = position_jitter(width = .2,height=0)) 
+grid.arrange(p1, p2, p3, p4, p5, p6, p7, nrow = 2)
+```
+
+```{r}
+#Fitting a model 
+lmod <- lm(ogtt ~ .-weight-height, df)
+summary(lmod)
+```
+
+#PART1. Checking the equal variance assumption 
+QQPLOT: check the nomarlity of errors assumtions with raw residuals 
+
+```{r}
+#Producing diagnistics plots:
+par (mfrow = c(2,2))
+plot (lmod)
+par (mfrow = c(1,1))
+
+```
+
+
+#PART2: LEVERAGES 
+Find large leverage values 
+
+```{r}
+#Identify points with leverages that are at least two times the average leverage.
+hatv <- hatvalues(lmod)
+#Any leverage that is at least twice as large as the average leverage is considered large.
+hatv [hatv > 2 * mean (hatv)]
+```
+```{r}
+#We can also make a histogram of the leverages and mark the threshold  value in red
+hist (hatv, xlab = "Leverages", main = "")
+abline(v = 2 * mean(hatv), col= "red")
+```
+#Answer: Points 8, 66, 111, ~ 2331, all have leverages twice as large as the avereage leverage.
+
+
+```{r}
+#
+library("faraway")
+individual <- row.names(df)
+halfnorm(hatv, lab = individual, ylab ="Leverages" )
+```
+
+#As before, we can se that the leverages of 2295 and 1362 is very high. 
+
+```{r}
+#delete high leverage 
+subdfleverage <- df[c(-8, -66, -111, -188, -418, -454, -626, -665, -711, -741, -891, -1026, -1049, -1076, -1077, -1232, -1300, -1362, -1368, -1465, -1477, -1488, -1506, -1553, -1572, -1595, -1597, -1664, -1677, -1720, -1731, -2024, -2058, -2074, -2121, -2177, -2291, -2295, -2331 ),]
+lmod_leverage <- lm(ogtt ~ .-weight-height, subdfleverage)
+summary(lmod_leverage)
+```
+
+```{r}
+individual <- row.names(subdfleverage)
+halfnorm(hatv, lab = individual, ylab ="Leverages" )
+```
+
+#Part 3: Outliers and Studentized Residuals
+
+```{r}
+lmod_leverage <- lm(ogtt ~ .-weight-height, subdfleverage)
+summary(lmod_leverage)
+```
+
+```{r}
+# Detect outliers using studentized residuals. Use the Bonferroni correction.
+#Let us compute the studentized residuals for the savings data and pick out the largest one:
+
+stud <- rstudent(lmod_leverage)
+stud[which.max(abs(stud))]
+
+```
+
+```{r}
+#In order to make a decision of whether to reject the null hypothesis that 19 is not an outlier. We need to calculate the Bonferroni critical value based on the t distribution:
+
+p <- 5
+n <- nrow (model.matrix(lmod_leverage))
+qt(1-.05 /(n*2),n-p-1)
+```
+```{r}
+which(abs(stud) > qt(1-.05/(n*2),n-p-1))
+
+```
+#observation 19, 221, ~1490 was detected as outliers 
+
+```{r}
+#delete outliers 
+subdfoutliers <- subdfleverage[c(-19, -221, -488, -573, -583, -1205, -1242, -1423, -1556, -2108, -2222, -9, -139, -327, -392, -399, -813, -837, -960, -1046, -1399, -1468),]
+lmod_outliers <- lm(ogtt ~ .-weight-height, subdfoutliers)
+summary(lmod_outliers)
+```
+
+
+
+
+
+#Part 4: Influential Observations
+
+```{r}
+#Use Cook’s distances to search for influential points.
+cook <- cooks.distance(lmod_outliers)
+n <- nrow(subdfoutliers)
+p <- 5
+which(cook > qf(0.5, p, n-p))
+```
+#Answer: No cooks distance was above the threshold.
+
+
+```{r}
+library("faraway")
+halfnorm(cook,3, ylab = "Cook's Distance")
+```
+```{r}
+summary(lmod_outliers)
+```
+
+
+```{r}
+param2Diff <- dfbeta(lmod_outliers)[,2]
+plot(param2Diff,ylab = "Change in pop15 coef")
+abline(h=0, col = "red")
+
+```
+```{r}
+param2Diff [param2Diff > 0.4]
+```
+```{r}
+param2Diff [param2Diff < -0.4]
+```
+```{r}
+subdfdiff <- subdfoutliers[c(-886, -1941, -2100, -2237),]
+
+lmod_diff <- lm(ogtt ~ .-weight-height, subdfdiff)
+summary(lmod_diff)
+
+```
+
+#after delete influential obseravtion, now edu's significance has changed. 
+
+
+
+
+
+```{r}
+corMatrix <- cor(subdfdiff)
+corMatrix <- round (corMatrix, 2)
+corMatrix
+```
+```{r}
+vif(lmod_diff)
+```
+
+```{r}
+cook2 <- cooks.distance(lmod_diff)
+halfnorm(cook2, 18, ylab = "Cook's Distance")
+
+```
+
+```{r}
+plot(lmod_diff, which = 1, col = "blue")
+
+```
+
+```{r}
+#Quantile-Quantile plot and a histogram based on the standardized residuals
+par (mfrow = c (1,2)) 
+qqnorm(rstandard(lmod_diff), main = "")  
+abline(0,1, col = "red")  
+hist (rstandard(lmod_diff), main = "", xlab = "Standardized Residuals")
+
+```
+
+
+
+
+
+```{r, warning=FALSE}
+# AIC
+require(leaps)
+amod <- regsubsets(ogtt ~ .-weight-height, subdfdiff)
+rs <- summary(amod)
+rs$which
+rs$rss
+n <- nrow(subdfoutliers)
+p <- 2:8
+AIC <- n*log(rs$rss / n) + 2 * p
+plot(AIC ~ I(p - 1), ylab = "AIC", xlab = "Number of Predictors", col = "blue")
+# Fourth has the loest AIC 
+modelaic <- lm(ogtt ~  hi+age + edu +bmi, subdfdiff)
+```
+
+```{r}
+summary(modelaic)
+```
+
+```{r}
+require(MASS)
+obj <- boxcox(modelaic, plotit = TRUE)
+```
+
+```{r}
+obj <- boxcox(modelaic, plotit = TRUE, lambda=seq(-0.8,0,by=0.1))
+
+```
+
+```{r}
+mlLambda <- obj$x[which.max(obj$y)]
+mlLambda
+```
+
+```{r}
+yTrans <- df$ogtt^(mlLambda) # Transform the response
+lmodTrans <- lm(yTrans ~ hi + age + edu + bmi,data = subdfdiff) # Fit a new regression
+
+summary(lmodTrans)
+
+```
+
+
+```{r}
+plot(lmodTrans, which = 1, col = "blue")
+```
+
+
+```{r}
+par (mfrow = c (1,2)) 
+qqnorm(rstandard(lmodTrans), main = "")  
+abline(0,1, col = "red")  
+hist (rstandard(lmodTrans), main = "", xlab = "Standardized Residuals")
+```
+```{r}
+anova(lmod_diff,modelaic)
+```
+

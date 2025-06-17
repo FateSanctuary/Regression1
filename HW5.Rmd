@@ -1,0 +1,84 @@
+---
+title: "HW5"
+author: "Xinrui Hu"
+date: "2023-03-10"
+output: pdf_document
+---
+
+```{r}
+library(faraway)
+data = teengamb
+```
+
+Question 1: Create a regression with gamble as the outcome variable and sex, status, income, and verbal as predictors.
+
+```{r}
+model1 <- lm(gamble ~ sex + status + income + verbal, data)
+summary(model1)
+```
+
+Question 2 Create a residuals vs. fitted plot. Do you think the variance is constant?
+
+```{r}
+plot(fitted(model1), residuals(model1), xlab = "Fitted",ylab = "Residuals", col = "blue")  
+abline(h=0, col = "red") 
+# No the variance is not constant
+```
+
+Question 3 Create a Quantile-Quantile plot and a histogram based on the standardized residuals. Does the distribution of residuals look normal?
+
+```{r}
+par (mfrow = c (1,2)) 
+qqnorm(rstandard(model1), main = "")  
+abline(0,1, col = "red")  
+hist (rstandard(model1), main = "", xlab = "Standardized Residuals")
+par (mfrow = c (1,1))
+# The distribution of the residual is not normal
+```
+
+Question 4 Print all the standardized residuals. Are there any observations with standardized residuals greater than 3 or smaller than -3? If so, which ones? What are their standardized residuals?
+
+```{r}
+rstandard(model1)
+# There are one standardized residual greater than 3 but no standardized residual smaller than -3. The standardized residual is 4.43
+```
+
+Question 5 Identify points with leverages that are at least two times the average leverage. Did you find any points? If so, which points did you find?
+
+```{r}
+hatv <- hatvalues(model1)
+mean(hatv)
+hatv [hatv > 2 * mean (hatv)]
+# I found 4 points, the 31st, 33rd, 35th, and 42nd points.
+```
+
+Question 6 Detect outliers using studentized residuals. Use the Bonferroni correction. Which observations are detected, and what is their studentized residual?
+
+```{r}
+stud <- rstudent(model1)
+stud[which.max(abs(stud))]
+p <- 47 * 0.05
+n <- 47
+qt(1-.05 /(n*2),n-p-1)
+which(abs(stud) > qt(1-.05/(n*2),n-p-1))
+#Question 7
+#Show the values of any outlier observation that you found in question 6 
+#The 24th observation detected and  the studentized residual is 6.016
+```
+
+Question 8
+Use Cook’s distances to search for influential points. Does any point have a Cook's distance above 0.5?
+```{r}
+cook <- cooks.distance(model1)
+cook[which(cook > 0.5)]
+# The 24th point has the cook's distance larger than 0.5
+```
+
+Question 9
+Create a half normal plot. Which observation has the highest Cooks distance?
+```{r}
+countries <- row.names(data) 
+halfnorm(cook,3, ylab = "Cook’s distances")
+# The 24th point has the highest distance
+```
+

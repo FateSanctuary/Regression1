@@ -1,0 +1,184 @@
+---
+title: "hw7"
+author: "Xinrui Hu"
+date: "2023-04-04"
+output: pdf_document
+---
+
+Question 1.1 Validate that the data contains 28 observations. Include
+only observations with no missing values
+
+```{r}
+animalsDf <- read.csv("AnimalsStat.csv")
+nrow(animalsDf [complete.cases(animalsDf ), ])
+nrow (animalsDf)
+```
+
+Question 1.2 Show the first observations of the table
+
+```{r}
+head(animalsDf)
+```
+
+Question 1.3 Use the summary function to answer the following questions:
+What is the average body mass? What is the average brain mass? Does the
+data contain any animals with a body mass of 0 kg Does the data contain
+any animals with a brain mass of 0 g Does the data contain any missing
+values?
+
+```{r}
+summary(animalsDf)
+# What is the average body mass? 4278.44kg
+# What is the average brain mass? 574.52g
+# Does the data contain any animals with a body mass of 0 kg ? No 
+# Does the data contain any animals with a brain mass of 0 g ? No
+# Does the data contain any missing values? No
+```
+
+Question 1.4 Which animal has the smallest and which has the largest
+brain mass in the dataset?
+
+```{r}
+animalsDf[which.min(animalsDf$Brain),] # Mouse
+animalsDf[which.max(animalsDf$Brain),] # African elephant
+```
+
+Question 1.5 Create a new variable for the brain-to-body mass ratio
+(i.e., brain mass / body mass)
+
+```{r}
+library(tidyverse)
+animalsDf <- animalsDf %>%  mutate(ratio = animalsDf$Brain / animalsDf$Body)
+```
+
+Question 1.6 Which animal has the smallest ratio, and which has the
+largest?
+
+```{r}
+animalsDf[which.min(animalsDf$ratio),] # Brachiosaurus
+animalsDf[which.max(animalsDf$ratio),] # Rhesus monkey
+```
+
+Question 1.7 Create the following four regressions: 1. Body mass as the
+predictor and brain mass as the outcome 2. Log body mass as the
+predictor and brain mass as the outcome 3. Body mass as the predictor
+and log brain mass as the outcome 4. Log body mass as the predictor and
+log brain mass as the outcome Show the summary for each model. Which one
+has the largest R2?
+
+```{r}
+model1 <- lm(Brain ~ Body, data = animalsDf)
+model2 <- lm(Brain ~ log(Body), data = animalsDf)
+model3 <- lm(log(Brain) ~ Body, data = animalsDf)
+model4 <- lm(log(Brain) ~ log(Body), data = animalsDf)
+summary(model1)
+summary(model2)
+summary(model3)
+# The model4 has the greatest R2
+summary(model4)
+```
+
+Question 1.8 Create a scatter plot with a regression line and a
+residuals vs fitted plot for the best regression.
+
+```{r}
+plot(model1, which=1, col = "blue")
+```
+
+Question 1.9 Based on the best model you found, Identify influential
+points using a half-normal plot of the Cook's distances. Which three
+animals have the largest distances?
+```{r, warning=FALSE}
+library(faraway)
+cook <- cooks.distance(model1)
+cook[which(cook > 0.5)]
+Animals <- row.names(animalsDf) 
+halfnorm(cook,3,labs = Animals , ylab = "Cook’s distances")
+# Asian elephant, African elephant, Brachiosaurus have the largest distance
+```
+
+Question 1.10
+Create a new data frame with the three observations removed
+```{r}
+df <- animalsDf[-c(7, 15, 26),]
+```
+
+Question 1.11
+Fit a new model based on the new data frame (with the three points removed). Show again the type of plots you created for question 1.8
+```{r}
+lmod<- lm(Brain ~ Body, data = df)
+plot(lmod, which=1, col = "blue")
+```
+
+Question 2.1
+Fit a model with O3 as the outcome and temp, humidity, ibh as predictors. Which coefficients are significant at the 5% level?
+```{r}
+mod <- lm(O3 ~ temp + humidity + ibh, data = ozone)
+summary(mod)
+# all the predictors are significant at 5% level
+```
+
+Question 2.2
+Fit the same model but add an interaction between temp and humidity.
+Has the adjusted R2 increased compared to the previous model?
+Is the interaction coefficient significant?
+Is the temp variable significant?
+Should we remove the temp variable while keeping the interaction?
+```{r}
+mod1 <- lm(O3 ~ temp + humidity + ibh + temp * humidity, data = ozone)
+summary(mod1)
+# R2 increased compare with the prior model, interaction model is significant, temp is not significant, we should remove it
+```
+
+Question 2.3
+Create a residuals vs fitted plot. Do you detect any issues?
+```{r}
+plot(mod, which = 1, col = "blue")
+# The plot is not linearly
+```
+
+Question 2.4
+Create a Q-Q plot and histogram of the standardized residuals. Do you see any issues?
+```{r}
+par (mfrow = c (1,2)) 
+qqnorm(rstandard(mod), main = "")  
+abline(0,1, col = "red")  
+hist (rstandard(mod), main = "", xlab = "Standardized Residuals")
+par (mfrow = c (1,1))
+```
+
+Question 2.5
+Use the Box-Cox method to find the optimal exponent for a power transformation of the outcome. What is the exponent that you found?
+```{r, message= FALSE}
+library(MASS)
+require(MASS)
+data(ozone, package = "faraway")
+obj <- boxcox(mod, plotit = TRUE)
+obj$x[which.max(obj$y)] # 0.26
+```
+
+Question 2.6
+Create a new variable for the transformed outcome based on the maximum likelihood exponent and fit a new model with the same predictors (including the interaction term). Show the regression output.
+```{r}
+yTrans <- (ozone$O3)^(0.26) 
+modTrans <- lm(yTrans ~ temp + humidity + ibh, data = ozone)
+summary(modTrans)
+```
+
+Question 2.7
+Create a residuals vs fitted plot for the new model. Do you see any difference?
+```{r}
+plot(modTrans, which = 1, col = "blue")
+# The fitted line is more flat
+```
+
+Question 2.8
+Create a Q-Q plot and histogram of the standardized residuals for the new model. Do you see any difference?
+```{r}
+par (mfrow = c (1,2)) 
+qqnorm(rstandard(modTrans), main = "")  
+abline(0,1, col = "red")  
+hist (rstandard(modTrans), main = "", xlab = "Standardized Residuals")
+par (mfrow = c (1,1))
+```
+

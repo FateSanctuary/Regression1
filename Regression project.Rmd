@@ -1,0 +1,138 @@
+---
+title: "Project"
+author: "Xinrui Hu"
+date: "2023-04-20"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r,message=FALSE}
+library(dplyr)
+library(tidyverse)
+library(knitr)
+library(car)
+options(scipen = 999)
+df <- read.csv('newdf.csv')
+df <- df %>% rename( "age" = "RIDAGEYR",
+                     "gender" = "RIAGENDR",
+                     "edu" = "DMDEDUC2",
+                     "marry" = "DMDMARTL", 
+                     "race" = "RIDRETH3", 
+                     "height" = "WHD010", 
+                     "weight" = "WHD020", 
+                     "hi" = "HIQ011", 
+                     "ogtt" = "LBXGLT") %>% na.omit(df$ogtt)
+# Deal with the abnormal value
+df$height[df$height > 90] <- NA
+df$weight[df$weight > 700] <- NA
+df$hi[df$hi != 1] <- 2
+# put the missing value with the mean of the data
+df$weight[is.na(df$weight)] <- mean(df$weight, na.rm = TRUE)
+df$height[is.na(df$height)] <- mean(df$height, na.rm = TRUE)
+df$bmi <- signif((df$weight / (df$height^2))*703,4)
+```
+```{r}
+summary(df)
+```
+
+```{r}
+# Set up the plotting window with two plots side-by-side
+par(mfrow = c(1, 2))
+plot(density(df$height), main = "Height Density", xlab = "height")
+plot(density(df$weight), main = "Weight Density", xlab = "Weight")
+```
+
+```{r}
+par(mfrow = c(1, 2))
+plot(density(df$bmi), main = "BMI Density", xlab = "BMI")
+plot(density(df$age), main = "Age Density", xlab = "Age")
+```
+```{r}
+par(mfrow = c(1, 2))
+hist(df$height, main = "Height Hist", xlab = "height")
+hist(df$weight, main = "Weight Hist", xlab = "Weight")
+```
+
+```{r}
+par(mfrow = c(1, 2))
+hist(df$bmi, main = "BMI Hist", xlab = "BMI")
+hist(df$age, main = "Age Hist", xlab = "Age")
+```
+
+```{r}
+par(mfrow = c(1, 2))
+hist(df$ogtt, main = "Oral Test Hist", xlab = "Test")
+plot(density(df$ogtt), main = "Oral Test Density", xlab = "Test")
+```
+
+```{r}
+# 10% of data as train to predict 90%
+tr_ind <- 1:(nrow(df)*8/10)
+train <- df[tr_ind, ]
+test <- df[-tr_ind, ]
+model <- lm(ogtt ~ .-weight-height, train)
+summary(model)
+```
+
+```{r}
+#check collinearty
+vif(model)
+```
+
+
+```{r}
+# Fitted vs. Residuals, Full model
+library(ggplot2)
+train_pred <- predict(model, newdata = train)
+test_pred <- predict(model, newdata = test)
+plot(train_pred, residuals(model), xlab = "Fitted Values", ylab = "Residuals", main = "Fitted vs. Residual Plot")
+abline(h = 0)
+```
+
+```{r}
+# QQ plot
+qqnorm(residuals(model))
+qqline(residuals(model))
+```
+
+```{r, warning=FALSE}
+# AIC
+require(leaps)
+amod <- regsubsets(ogtt ~ ., train)
+rs <- summary(amod)
+rs$which
+rs$rss
+n <- nrow(train)
+p <- 2:10
+AIC <- n*log(rs$rss / n) + 2 * p
+plot(AIC ~ I(p - 1), ylab = "AIC", xlab = "Number of Predictors", col = "blue")
+# Third has the loest AIC 
+model1 <- lm(ogtt ~ weight + age + edu, train)
+summary(model1)
+```
+
+```{r}
+train_pred1 <- predict(model1, newdata = train)
+test_pred1 <- predict(model1, newdata = test)
+plot(train_pred, residuals(model1), xlab = "Fitted Values", ylab = "Residuals", main = "Fitted vs. Residual Plot")
+abline(h = 0)
+```
+```{r}
+qqnorm(residuals(model1))
+qqline(residuals(model1))
+```
+
+```{r}
+train_pred1 <- predict(model1, newdata = train)
+data <- data.frame(actual = test$ogtt, predicted = train_pred1)
+
+# plot predicted vs. actual
+plot(data$actual, data$predicted, xlab = "Actual", ylab = "Predicted", main = "Predicted vs. Actual")
+
+# add a reference line for perfect predictions
+abline(a = 0, b = 1, col = "red")
+```
+

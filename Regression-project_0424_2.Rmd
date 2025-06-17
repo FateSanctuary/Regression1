@@ -1,0 +1,238 @@
+---
+title: "Project"
+author: "Xinrui Hu"
+date: "2023-04-20"
+output: pdf_document
+---
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+rm (list = ls()) # Clearing the memory
+
+```
+
+```{r,message=FALSE}
+library(dplyr)
+library(tidyverse)
+library(knitr)
+library(car)
+options(scipen = 999)
+df <- read.csv('newdf.csv')
+df <- df %>% rename( "age" = "RIDAGEYR",
+                     "gender" = "RIAGENDR",
+                     "edu" = "DMDEDUC2",
+                     "marry" = "DMDMARTL", 
+                     "race" = "RIDRETH3", 
+                     "height" = "WHD010", 
+                     "weight" = "WHD020", 
+                     "hi" = "HIQ011", 
+                     "ogtt" = "LBXGLT") %>% na.omit(df$ogtt)
+```
+
+```{r}
+# Deal with the abnormal value
+df$height[df$height > 90] <- NA
+df$weight[df$weight > 700] <- NA
+df$hi[df$hi != 1] <- 2
+# put the missing value with the mean of the data
+df$weight[is.na(df$weight)] <- mean(df$weight, na.rm = TRUE)
+df$height[is.na(df$height)] <- mean(df$height, na.rm = TRUE)
+df$bmi <- signif((df$weight / (df$height^2))*703,4)
+```
+
+```{r}
+summary(df)
+```
+
+```{r}
+# Set up the plotting window with two plots side-by-side
+par(mfrow = c(1, 2))
+plot(density(df$height), main = "Height Density", xlab = "height")
+plot(density(df$weight), main = "Weight Density", xlab = "Weight")
+```
+
+```{r}
+par(mfrow = c(1, 2))
+plot(density(df$bmi), main = "BMI Density", xlab = "BMI")
+plot(density(df$age), main = "Age Density", xlab = "Age")
+```
+```{r}
+par(mfrow = c(1, 2))
+hist(df$height, main = "Height Hist", xlab = "height")
+hist(df$weight, main = "Weight Hist", xlab = "Weight")
+```
+
+```{r}
+par(mfrow = c(1, 2))
+hist(df$bmi, main = "BMI Hist", xlab = "BMI")
+hist(df$age, main = "Age Hist", xlab = "Age")
+```
+
+
+
+
+
+
+```{r}
+par(mfrow = c(1, 2))
+hist(df$ogtt, main = "Oral Test Hist", xlab = "Test")
+plot(density(df$ogtt), main = "Oral Test Density", xlab = "Test")
+```
+
+```{r}
+library ("gridExtra")
+require(ggplot2)  
+p1 <- ggplot(df, aes(hi, ogtt)) + geom_point() + stat_smooth(method="lm")
+p2 <- ggplot(df, aes(age, ogtt)) + geom_point() + stat_smooth(method="lm")
+p3 <- ggplot(df, aes(gender, ogtt)) + geom_point() +stat_smooth(method="lm")
+p4 <- ggplot(df, aes(edu, ogtt)) + geom_point() + stat_smooth( method="lm")
+p5 <- ggplot(df, aes(marry, ogtt)) + geom_point() + stat_smooth(method="lm")
+p6 <- ggplot(df, aes(race, ogtt)) + geom_point() + stat_smooth(method="lm")
+p7 <- ggplot(df, aes(bmi, ogtt)) + geom_point(position = position_jitter(width = .2,height=0)) 
+grid.arrange(p1, p2, p3, p4, p5, p6, p7, nrow = 2)
+```
+
+```{r}
+#Fitting a model 
+lmod <- lm(ogtt ~ .-weight-height, df)
+summary(lmod)
+```
+
+```{r}
+#Producing diagnistics plots:
+par (mfrow = c(2,2))
+plot (lmod)
+par (mfrow = c(1,1))
+
+```
+
+
+```{r}
+cook <- cooks.distance(lmod)
+cook[which(cook>0.5)]
+```
+
+```{r}
+library("faraway")
+halfnorm(cook, 18, ylab = "Cook's Distance")
+```
+
+
+```{r}
+df[971,]
+```
+#oberservation 10 and 971 has the high distance 
+```{r}
+# Detect outliers using studentized residuals. Use the Bonferroni correction.
+stud <- rstudent(lmod)
+stud[which.max(abs(stud))]
+
+```
+
+```{r}
+p <- 7
+n <- nrow (model.matrix(lmod))
+qt(1-.05 /(n*2),n-p)
+```
+```{r}
+which(abs(stud) > qt(1-.05/(n*2),n-p))
+```
+```{r}
+subsetdf <- df[c(-10, -19, -221, -488, -573, -583, -1205, -1242, -1423, -1556, -142, -331, -396, -403, -823, -847, -971, -1059, -1418, -1490),]
+
+```
+
+```{r}
+corMatrix <- cor(subsetdf)
+corMatrix <- round (corMatrix, 2)
+corMatrix
+```
+```{r}
+vif(lmod)
+```
+```{r}
+#new model without outliers 
+model2 <- lm(ogtt ~ .-weight-height, subsetdf)
+summary(model2)
+```
+```{r}
+cook2 <- cooks.distance(model2)
+halfnorm(cook2, 18, ylab = "Cook's Distance")
+
+```
+
+```{r}
+plot(model2, which = 1, col = "blue")
+
+```
+
+```{r}
+#Quantile-Quantile plot and a histogram based on the standardized residuals
+par (mfrow = c (1,2)) 
+qqnorm(rstandard(model2), main = "")  
+abline(0,1, col = "red")  
+hist (rstandard(model2), main = "", xlab = "Standardized Residuals")
+
+```
+
+
+
+
+
+```{r, warning=FALSE}
+# AIC
+require(leaps)
+amod <- regsubsets(ogtt ~ .-weight-height, subsetdf)
+rs <- summary(amod)
+rs$which
+rs$rss
+n <- nrow(subsetdf)
+p <- 2:8
+AIC <- n*log(rs$rss / n) + 2 * p
+plot(AIC ~ I(p - 1), ylab = "AIC", xlab = "Number of Predictors", col = "blue")
+
+# Fourth has the loest AIC 
+model1 <- lm(ogtt ~  hi+age + edu +bmi, subsetdf)
+```
+
+```{r}
+summary(model1)
+```
+
+```{r}
+require(MASS)
+obj <- boxcox(model1, plotit = TRUE)
+```
+
+```{r}
+obj <- boxcox(model1, plotit = TRUE, lambda=seq(-0.8,0,by=0.1))
+
+```
+
+```{r}
+mlLambda <- obj$x[which.max(obj$y)]
+mlLambda
+```
+
+```{r}
+yTrans <- df$ogtt^(mlLambda) # Transform the response
+lmodTrans <- lm(yTrans ~ hi + age + edu + bmi,data=df) # Fit a new regression
+
+summary(lmodTrans)
+
+```
+
+
+```{r}
+plot(lmodTrans, which = 1, col = "blue")
+```
+
+
+```{r}
+par (mfrow = c (1,2)) 
+qqnorm(rstandard(lmodTrans), main = "")  
+abline(0,1, col = "red")  
+hist (rstandard(lmodTrans), main = "", xlab = "Standardized Residuals")
+```

@@ -1,0 +1,62 @@
+---
+title: "HW3"
+author: "Xinrui Hu"
+date: "2023-02-25"
+output: pdf_document
+---
+
+Question 1
+
+Fit a regression model with the brozek variable (percent of body fat) as a response and the following five predictors: age, neck, abdom, forearm and wrist.
+```{r}
+library(faraway)
+model <- lm(brozek ~  age + neck + abdom + forearm + wrist, fat)
+summary(model)
+# all the five variables are significant at  0.05 level
+```
+
+Question 2
+Provide interpretation to the coefficient of each significant predictor
+```{r}
+#A one yrs increases in age is associated with average increases of 0.087 Percent of body fat using Brozek’s equation.
+#A one cm increases in Neck circumference is associated with average decrease of 0.556 Percent of body fat using Brozek’s equation.
+#A one cm increases in Abdomen circumference is associated with average increase of 0.721 Percent of body fat using Brozek’s equation.
+#A one cm increases in Forearm circumference is associated with average increaase of 0.474 Percent of body fat using Brozek’s equation.
+#A one cm increases in Wrist circumference is associated with average decrease of 2.05 Percent of body fat using Brozek’s equation.
+```
+
+Question 3
+Compute the median values of the five predictors. Store the medians in a variable named x0 and show the values.
+```{r}
+x <- model.matrix(model)
+(x0 <- apply(x,2,median))
+```
+
+Question 4
+Construct a confidence interval of the mean response based on the median values that you stored in x0.
+```{r}
+predict(model, new = data.frame(t(x0)),interval = "confidence")
+```
+
+Question 5
+Construct a prediction interval of future response value based on the median values that you stored in x0.
+```{r}
+predict(model, new = data.frame(t(x0)),interval = "prediction")
+```
+
+Question 6:
+Which of the two intervals is wider?
+The prediction interval is wider
+
+Question 7:
+Construct a confidence interval of the outcome variable for a person with the following characteristics:
+Age: 50 years
+Neck circumference: 42 cm
+Abdomen circumference: 95 cm
+Forearm circumference: 30cm
+Wrist circumference: 17 cm
+```{r}
+x1 <- c("(Intercept)" = 1, age = 50, neck = 42, abdom = 95, forearm = 30, wrist = 17)
+predict(model, new = data.frame(t(x1)),interval = "confidence")
+```
+

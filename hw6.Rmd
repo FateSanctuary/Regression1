@@ -1,0 +1,77 @@
+---
+title: "hw6"
+author: "Xinrui Hu"
+date: "2023-03-18"
+output: pdf_document
+---
+
+
+```{r}
+library (faraway)
+```
+
+Question 1:
+Fit a regression model with the brozek variable (percent of body fat) as a response and the following 13 predictors: age, weight, height, neck, chest, abdom, hip, thigh, knee, ankle, biceps, forearm, and wrist.
+```{r}
+model <- lm(brozek ~ age + weight + height + neck + chest + abdom + hip + thigh + knee + ankle + biceps + forearm + wrist, fat)
+summary(model)
+```
+
+Question 2
+Calculate pairwse correlations between the predictors (correlation matrix). Make sure to remove the outcome variable from the matrix.
+```{r}
+var1Removed <- fat[,-1]
+corMatrix <- cor(var1Removed)
+corMatrix <- round(corMatrix,2)
+corMatrix
+```
+
+Question 3
+Evaluate the collinearity by calculating the condition numbers of the eigenvalues. Are there any condition numbers above 30?
+```{r}
+x <- model.matrix(model)[,-1]
+e <- eigen(t(x) %*% x)
+e$val
+sqrt(e$val[1] / e$val)
+# There are condition value above 30
+```
+
+Question 4
+Calculate the variance inflation factor for each predictor. Which inflation factors are greater than 10?
+```{r}
+rsq <- summary(lm(x[,1] ~ x[,-1]))$r.squared
+rsq
+1 / ( 1 - rsq)
+require(faraway)
+vif(x)
+# weight and abdom inflation factor are greater than 10
+```
+
+Question 5
+Fit a model with brozek as the response and age, weight, and height as predictors. Show the summary: 
+```{r}
+model1 <- lm(brozek ~ age + weight + height, fat)
+summary(model1)
+```
+
+Question 6
+Evaluate the collinearity by calculating the condition numbers of the eigenvalues. Are there any condition numbers above 30?
+```{r}
+x1<- model.matrix(model1)[,-1]
+e1 <- eigen(t(x1) %*% x1)
+e1$val
+sqrt(e1$val[1] / e1$val)
+# no condition number larger than 30
+```
+
+Question 7
+Calculate the variance inflation factor for each predictor. Which inflation factors are greater than 10?
+```{r}
+rsq1 <- summary(lm(x[,1] ~ x[,-1]))$r.squared
+rsq1
+1 / ( 1 - rsq1)
+require(faraway)
+vif(x1)
+# no factor greater than 10
+```
+

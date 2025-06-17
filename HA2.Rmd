@@ -1,0 +1,85 @@
+---
+title: "HA2"
+author: "Xinrui Hu"
+date: "2023-02-17"
+output: pdf_document
+---
+
+1.1 Show descriptive statistics for each of the variables
+What is the mean subjective taste score?
+```{r}
+library(faraway)
+summary(cheddar)
+# taste mean is 24.53
+```
+
+1.2 Show a histogram for each of the variables. Make sure to label the x-axis
+```{r}
+hist(cheddar$taste, xlab = "Taste")
+hist(cheddar$Acetic, xlab = "Acetic")
+hist(cheddar$H2S, xlab = "H2S")
+hist(cheddar$Lactic, xlab = "Lactic")
+```
+
+1.3 Fit a regression model with taste as the response and no predictors.
+What is the value of the intercept? What does it represent?
+```{r}
+Tnull <- lm(cheddar$taste ~ 1)
+Tnull
+# It represents the value of the mean of the taste
+```
+
+1.4 Fit a regression model with taste as the response and Lactic as the only predictor.
+```{r}
+summary(lm(taste ~ Lactic, cheddar))
+# It is statistically significant at 5% level
+```
+
+1.5 Calculate the p-value of the model you created in Question 1.4 using the anova function.
+```{r}
+anova(lm(taste ~ Lactic, cheddar))
+```
+
+1.6 Fit a regression model with taste as the response and the three chemical contents as predictors. Identify the predictors that are statistically significant at the 5% level.
+```{r}
+mall <- lm(taste ~ Lactic + H2S + Acetic, cheddar)
+summary(mall)
+# It is statistically significant at 5% level
+```
+
+1.7 Use the anova function to recalculate the significance of the H2S variable as shown in the output of Question 1.6:
+```{r}
+model1 <- lm(taste ~ Lactic + Acetic, cheddar)
+anova(model1,mall)
+# p value is smaller than 5% so we can not frop the variable H2S
+```
+
+1.8 Test the hypothesis that the coefficients of Acetic and Lactic both equal 0 when H2S is included in the model. Should we reject this hypothesis?
+```{r}
+model2 <- lm(taste ~ H2S, cheddar)
+anova(model2, mall)
+# Fail to reject the null hypothesis since the p-value is greater than 5%
+```
+
+2.1 Convert sex into a factor and label and levels (male and female).
+```{r}
+teengamb$sex <- factor(teengamb$sex,
+                        levels = c(0,1),
+                        labels = c("male", "female"))
+head(teengamb)
+```
+
+2.2 Fit a model with gamble as the response and income, verbal and sex as predictors. Which variables are statistically significant at the 5% level? 
+```{r}
+gmodel <- lm(gamble ~ income + verbal + sex, data = teengamb)
+summary(gmodel)
+# Income and sex are significant at the 5% level
+# On average, the aggregate responses of female is 22.96 lower compared to male when we control for income and verbal
+```
+
+2.3 Use the confint function to produce 95% confidence intervals for the coefficients based on the same model. Can you deduce which coefficients are significant at the level of 5% based on the intervals?
+```{r}
+confint(gmodel, level = 0.95)
+#  If the interval does not include zero, we can conclude that the corresponding coefficient is statistically significant at the 5% level.
+```
+

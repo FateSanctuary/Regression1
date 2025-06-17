@@ -1,0 +1,65 @@
+---
+title: "HA 1"
+author: "Xinrui Hu"
+date: "2023-02-11"
+output: pdf_document
+---
+
+Question 1
+Calculate descriptive statistics of each of the variables.
+```{r}
+library("faraway")
+summary(prostate)
+```
+
+Question 2
+Create a scatter plot matrix for all the variables
+```{r}
+pairs(prostate)
+```
+
+Question 3
+Calculate a (Pearson) correlation matrix for all the variables.
+```{r}
+cor(prostate)
+```
+
+Question 4
+Show the same matrix again, but round the correlations (use three decimal places).
+Which variable has the highest correlation with lcavol  (The variable represents the log(cancer volume in cm3)?
+```{r}
+round(cor(prostate),digits = 2)
+# lpsa has the highest correlation with lcavol
+```
+
+Question 5
+Show a scatter plot. Put lcavol in the y-axis and the variable you found in question 4 in the x-axis.
+
+Include a regression line and label the axis.
+```{r}
+lg <- lm(lcavol ~ lpsa, data = prostate)
+plot(prostate$lpsa, prostate$lcavol, 
+     col = "blue", 
+     xlab = "lpsa", ylab = "lcavol",
+     abline(lg, col = "red"))
+
+```
+
+Question 6
+Update the regression model you created for the regression line in question 5 by adding a second predictor: age.
+
+Show the regression model output. What percentage of the variance of the outcome variables is explained by the two predictors?
+```{r}
+lg1 <- lm(lcavol ~ lpsa + age, data = prostate)
+summary(lg1)
+# 0.5498
+```
+
+
+Question 7
+What is the Residual Standard Error of the model you created in Question 6?
+```{r}
+sqrt(deviance(lg1) / df.residual(lg1))
+# 0.7991732
+```
+
